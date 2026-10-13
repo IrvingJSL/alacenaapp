@@ -13,7 +13,6 @@ enum _Periodo { meses, semanas }
 
 typedef _Fila = ({DateTime fecha, int cantidad, double precio});
 
-/// Ventana de tendencias: gráfica de gasto / unidades compradas.
 class TendenciasScreen extends StatefulWidget {
   const TendenciasScreen({super.key});
 
@@ -231,14 +230,12 @@ class SectionTitleInline extends StatelessWidget {
       );
 }
 
-/// Gráfica de línea simple (CustomPainter): ejes, línea recta, puntos y etiquetas.
 class _LineChartPainter extends CustomPainter {
   _LineChartPainter({required this.valores, required this.etiquetas});
 
   final List<double> valores;
   final List<String> etiquetas;
 
-  // Escribe un texto en el canvas
   void _texto(Canvas canvas, String texto, double x, double y) {
     final tp = TextPainter(
       text: TextSpan(
@@ -255,19 +252,16 @@ class _LineChartPainter extends CustomPainter {
     final n = valores.length;
     final maxV = math.max(valores.reduce(math.max), 1.0);
 
-    // Área donde se dibuja
     final izq = 20.0;
     final der = size.width - 20;
     final abajo = size.height - 25;
     final alto = abajo - 20;
 
-    // Eje X
     final pincelEje = Paint()
       ..color = Colors.white38
       ..strokeWidth = 1;
     canvas.drawLine(Offset(izq, abajo), Offset(der, abajo), pincelEje);
 
-    // Un punto por cada valor
     final puntos = <Offset>[];
     for (var i = 0; i < n; i++) {
       final x = izq + (der - izq) * i / (n - 1);
@@ -275,7 +269,6 @@ class _LineChartPainter extends CustomPainter {
       puntos.add(Offset(x, y));
     }
 
-    // Líneas rectas entre puntos
     final pincelLinea = Paint()
       ..color = Pal.cyan
       ..strokeWidth = 3;
@@ -283,7 +276,6 @@ class _LineChartPainter extends CustomPainter {
       canvas.drawLine(puntos[i], puntos[i + 1], pincelLinea);
     }
 
-    // Círculos y etiquetas
     final pincelPunto = Paint()..color = Colors.white;
     for (var i = 0; i < n; i++) {
       canvas.drawCircle(puntos[i], 4, pincelPunto);
