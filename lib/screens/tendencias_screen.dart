@@ -13,6 +13,7 @@ enum _Periodo { meses, semanas }
 
 typedef _Fila = ({DateTime fecha, int cantidad, double precio});
 
+/// Ventana de tendencias: gráfica de gasto / unidades compradas.
 class TendenciasScreen extends StatefulWidget {
   const TendenciasScreen({super.key});
 
@@ -29,8 +30,7 @@ class _TendenciasScreenState extends State<TendenciasScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _f =
-        DatabaseHelper.instance.comprasDesde(DateTime(now.year, now.month - 5));
+    _f = DatabaseHelper.instance.comprasDesde(DateTime(now.year, now.month - 5));
   }
 
   double _valor(_Fila f) =>
@@ -46,8 +46,7 @@ class _TendenciasScreenState extends State<TendenciasScreen> {
       final ini = DateTime(now.year, now.month - 5);
       final vals = List<double>.filled(6, 0);
       for (var i = 0; i < 6; i++) {
-        final t = DateFormat('MMM', 'es_MX')
-            .format(DateTime(ini.year, ini.month + i));
+        final t = DateFormat('MMM', 'es_MX').format(DateTime(ini.year, ini.month + i));
         et.add(t[0].toUpperCase() + t.substring(1));
       }
       for (final f in filas) {
@@ -147,15 +146,9 @@ class _TendenciasScreenState extends State<TendenciasScreen> {
               ),
               const SizedBox(height: 18),
               Row(children: [
-                Expanded(
-                    child: StatBox(
-                        label: 'Total', value: _fmt(total), color: Pal.cyan)),
+                Expanded(child: StatBox(label: 'Total', value: _fmt(total), color: Pal.cyan)),
                 const SizedBox(width: 10),
-                Expanded(
-                    child: StatBox(
-                        label: 'Promedio',
-                        value: _fmt(prom),
-                        color: Pal.amber)),
+                Expanded(child: StatBox(label: 'Promedio', value: _fmt(prom), color: Pal.amber)),
                 const SizedBox(width: 10),
                 Expanded(
                     child: StatBox(
@@ -174,19 +167,11 @@ class _TendenciasScreenState extends State<TendenciasScreen> {
                 child: Column(children: [
                   SizedBox(
                     height: 220,
-                    child: TweenAnimationBuilder<double>(
-                      key: ValueKey('${_m.name}_${_p.name}'),
-                      tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 700),
-                      curve: Curves.easeOutCubic,
-                      builder: (_, t, __) => CustomPaint(
-                        size: Size.infinite,
-                        painter: _LineChartPainter(
-                          valores: v,
-                          etiquetas: g.etiquetas,
-                          progreso: t,
-                          formato: _fmt,
-                        ),
+                    child: CustomPaint(
+                      size: Size.infinite,
+                      painter: _LineChartPainter(
+                        valores: v,
+                        etiquetas: g.etiquetas,
                       ),
                     ),
                   ),
@@ -242,131 +227,70 @@ class SectionTitleInline extends StatelessWidget {
         padding: const EdgeInsets.only(top: 22, bottom: 10),
         child: Text(text,
             style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: Colors.white)),
+                fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
       );
 }
 
+/// Gráfica de línea simple (CustomPainter): ejes, línea recta, puntos y etiquetas.
 class _LineChartPainter extends CustomPainter {
-  _LineChartPainter({
-    required this.valores,
-    required this.etiquetas,
-    required this.progreso,
-    required this.formato,
-  });
+  _LineChartPainter({required this.valores, required this.etiquetas});
 
   final List<double> valores;
   final List<String> etiquetas;
-  final double progreso;
-  final String Function(double) formato;
 
-  void _texto(Canvas c, String t, Offset centro, TextStyle st, double minX,
-      double maxX) {
+  // Escribe un texto en el canvas
+  void _texto(Canvas canvas, String texto, double x, double y) {
     final tp = TextPainter(
-      text: TextSpan(text: t, style: st),
+      text: TextSpan(
+        text: texto,
+        style: const TextStyle(color: Colors.white70, fontSize: 10),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
-    final x = (centro.dx - tp.width / 2)
-        .clamp(minX, math.max(minX, maxX - tp.width))
-        .toDouble();
-    tp.paint(c, Offset(x, centro.dy));
+    tp.paint(canvas, Offset(x - tp.width / 2, y));
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    const padX = 14.0, padTop = 28.0, padBottom = 26.0;
-    final left = padX, right = size.width - padX;
-    final top = padTop, bottom = size.height - padBottom;
-    final w = right - left, h = bottom - top;
     final n = valores.length;
-    final maxV = math.max(valores.reduce(math.max), 1.0) * 1.1;
+    final maxV = math.max(valores.reduce(math.max), 1.0);
 
-    final grid = Paint()
-      ..color = Pal.border
+    // Área donde se dibuja
+    final izq = 20.0;
+    final der = size.width - 20;
+    final abajo = size.height - 25;
+    final alto = abajo - 20;
+
+    // Eje X
+    final pincelEje = Paint()
+      ..color = Colors.white38
       ..strokeWidth = 1;
-    for (var i = 0; i <= 3; i++) {
-      final y = top + h * i / 3;
-      for (double x = left; x < right; x += 8) {
-        canvas.drawLine(Offset(x, y), Offset(math.min(x + 4, right), y), grid);
-      }
-    }
+    canvas.drawLine(Offset(izq, abajo), Offset(der, abajo), pincelEje);
 
-    final pts = <Offset>[
-      for (var i = 0; i < n; i++)
-        Offset(
-          n > 1 ? left + w * i / (n - 1) : left + w / 2,
-          bottom - (valores[i] / maxV) * h * progreso,
-        ),
-    ];
-
-    final line = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (var i = 1; i < n; i++) {
-      final cx = (pts[i - 1].dx + pts[i].dx) / 2;
-      line.cubicTo(cx, pts[i - 1].dy, cx, pts[i].dy, pts[i].dx, pts[i].dy);
-    }
-
-    final area = Path.from(line)
-      ..lineTo(pts.last.dx, bottom)
-      ..lineTo(pts.first.dx, bottom)
-      ..close();
-    canvas.drawPath(
-      area,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Pal.cyan.withValues(alpha: 0.4),
-            Pal.cyan.withValues(alpha: 0.02)
-          ],
-        ).createShader(Rect.fromLTRB(left, top, right, bottom)),
-    );
-
-    canvas.drawPath(
-      line,
-      Paint()
-        ..color = Pal.cyan
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
-    );
-
-    for (final p in pts) {
-      canvas.drawCircle(p, 3.5, Paint()..color = Pal.cyan);
-    }
-
-    final maxI = valores.indexOf(valores.reduce(math.max));
-    if (valores[maxI] > 0) {
-      final p = pts[maxI];
-      canvas.drawCircle(p, 8, Paint()..color = Pal.cyan.withValues(alpha: 0.3));
-      canvas.drawCircle(p, 5.5, Paint()..color = Colors.white);
-      _texto(
-        canvas,
-        formato(valores[maxI]),
-        Offset(p.dx, p.dy - 24),
-        const TextStyle(
-            color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
-        0,
-        size.width,
-      );
-    }
-
+    // Un punto por cada valor
+    final puntos = <Offset>[];
     for (var i = 0; i < n; i++) {
-      _texto(
-        canvas,
-        etiquetas[i],
-        Offset(pts[i].dx, bottom + 8),
-        const TextStyle(color: Pal.textDim, fontSize: 10),
-        0,
-        size.width,
-      );
+      final x = izq + (der - izq) * i / (n - 1);
+      final y = abajo - (valores[i] / maxV) * alto;
+      puntos.add(Offset(x, y));
+    }
+
+    // Líneas rectas entre puntos
+    final pincelLinea = Paint()
+      ..color = Pal.cyan
+      ..strokeWidth = 3;
+    for (var i = 0; i < n - 1; i++) {
+      canvas.drawLine(puntos[i], puntos[i + 1], pincelLinea);
+    }
+
+    // Círculos y etiquetas
+    final pincelPunto = Paint()..color = Colors.white;
+    for (var i = 0; i < n; i++) {
+      canvas.drawCircle(puntos[i], 4, pincelPunto);
+      _texto(canvas, etiquetas[i], puntos[i].dx, abajo + 6);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LineChartPainter old) =>
-      old.progreso != progreso ||
-      old.valores != valores ||
-      old.etiquetas != etiquetas;
+  bool shouldRepaint(covariant _LineChartPainter old) => true;
 }
